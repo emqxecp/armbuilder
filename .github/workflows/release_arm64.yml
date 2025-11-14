@@ -58,12 +58,13 @@ jobs:
               tag="${{ github.actor }}"
             fi
           fi
-          if [[ "${{github.event_name}}" == "push" ]] && [[ ${{ github.ref_name }} == "develop" ]]; then
+          if [[ "${{github.event_name}}" == "push" ]] && [[ ${{ github.ref_name }} == "ecp-ci" ]]; then
               tag="dev-latest"
           fi
           echo "tag=${tag}" >> $GITHUB_OUTPUT
 
           if [[ ${{ github.ref_type }} == "tag" ]]; then
+            cd EMQX-Business-Critical && git checkout ${GITHUB_REF##*/} && cd ..
             echo 'registry<<EOF' >> $GITHUB_OUTPUT
             echo "ghcr.io/emqxecp/ecp-main" >> $GITHUB_OUTPUT
             # echo "docker.io/emqx/ecp-main" >> $GITHUB_OUTPUT
