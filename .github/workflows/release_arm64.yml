@@ -39,11 +39,18 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.GH_TOKEN }}
-      # 拉取 https://github.com/emqx/ecp-ai 仓库
       - uses: actions/checkout@v4
+        if: github.ref_type != 'tag'
         with:
           repository: emqx/EMQX-Business-Critical
           ref: develop
+          path: EMQX-Business-Critical
+          token: ${{ secrets.GH_TOKEN }}
+      - uses: actions/checkout@v4
+        if: github.ref_type == 'tag'
+        with:
+          repository: emqx/EMQX-Business-Critical
+          ref: ${{ github.ref }}
           path: EMQX-Business-Critical
           token: ${{ secrets.GH_TOKEN }}
       - name: Docker image tag
@@ -64,7 +71,6 @@ jobs:
           echo "tag=${tag}" >> $GITHUB_OUTPUT
 
           if [[ ${{ github.ref_type }} == "tag" ]]; then
-            cd EMQX-Business-Critical && git checkout ${GITHUB_REF##*/} && cd ..
             echo 'registry<<EOF' >> $GITHUB_OUTPUT
             echo "ghcr.io/emqxecp/ecp-main" >> $GITHUB_OUTPUT
             # echo "docker.io/emqx/ecp-main" >> $GITHUB_OUTPUT
