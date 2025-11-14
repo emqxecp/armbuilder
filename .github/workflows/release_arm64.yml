@@ -1,0 +1,105 @@
+name: Release Arm64 Version
+
+on:
+  push:
+    branches:
+      - "ecp-ci"
+    tags:
+      - "*"
+
+jobs:
+  docker:
+    runs-on: ubuntu-22.04-arm
+    steps:
+      # GitHub App token 有效期固定为1小时，无法修改
+      # 如果工作流运行时间超过1小时，需要在使用时重新生成token
+      # - uses: actions/create-github-app-token@v1
+      #   id: generate-token
+      #   with:
+      #     app-id: ${{ vars.AUTH_APP_ID }}
+      #     private-key: ${{ secrets.AUTH_APP_PRIVATE_KEY }}
+      #     owner: ${{ github.repository_owner }}
+      #     # skip-token-revoke: true  # 可选：阻止在job完成时自动撤销token
+      #     repositories: |
+      #       gotools
+      #       emqx-bc-iaas-hand
+      #       neuronex-operator
+      #       EMQX-Business-Critical
+      #       emqx-bc-web
+      #       gorm
+      #       ecp-ai
+      #       emqx-bc-emqxee-agent
+      - name: Private repo access
+        run: |
+          git config --global url."https://x-access-token:${{ steps.generate-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
+          echo "GOPRIVATE=github.com/emqx/*" >> $GITHUB_ENV
+          echo "GONOPROXY=github.com/emqx/*" >> $GITHUB_ENV
+          echo "GONOSUMDB=github.com/emqx/*" >> $GITHUB_ENV
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GH_TOKEN }}
+      # 拉取 https://github.com/emqx/ecp-ai 仓库
+      - uses: actions/checkout@v4
+        with:
+          repository: emqx/EMQX-Business-Critical
+          ref: develop
+          path: EMQX-Business-Critical
+          token: ${{ secrets.GH_TOKEN }}
+      - name: Docker image tag
+        id: image
+        run: |
+          tag="${GITHUB_REF##*/}"
+          if [[ ${{ github.event_name }} == "pull_request" ]]; then
+            fromBranch="${{ github.head_ref }}"
+            if [[ "${fromBranch}" == "build/"* ]]; then
+              tag="${fromBranch#build/}"
+            else
+              tag="${{ github.actor }}"
+            fi
+          fi
+          if [[ "${{github.event_name}}" == "push" ]] && [[ ${{ github.ref_name }} == "develop" ]]; then
+              tag="dev-latest"
+          fi
+          echo "tag=${tag}" >> $GITHUB_OUTPUT
+
+          if [[ ${{ github.ref_type }} == "tag" ]]; then
+            echo 'registry<<EOF' >> $GITHUB_OUTPUT
+            echo "ghcr.io/emqx/ecp-main" >> $GITHUB_OUTPUT
+            # echo "docker.io/emqx/ecp-main" >> $GITHUB_OUTPUT
+            echo 'EOF' >> $GITHUB_OUTPUT
+          else
+            echo 'registry="ghcr.io/emqx/ecp-main"' >> $GITHUB_OUTPUT
+          fi
+      - uses: docker/metadata-action@v5
+        id: meta
+        with:
+          images: |
+            ${{ steps.image.outputs.registry }}
+          tags: |
+            type=raw,value=${{ steps.image.outputs.tag }},enabled=${{ github.ref_type != 'tag' }}
+            type=semver,pattern={{version}},enabled=${{ github.ref_type == 'tag' }}
+            type=semver,pattern={{major}}.{{minor}},enabled=${{ github.ref_type == 'tag' }}
+      # - uses: docker/login-action@v3
+      #   if: github.ref_type == 'tag'
+      #   with:
+      #     username: ${{ secrets.DOCKER_HUB_USER }}
+      #     password: ${{ secrets.DOCKER_HUB_TOKEN }}
+      - uses: docker/build-push-action@v5
+        with:
+          context: ./EMQX-Business-Critical/
+          platforms: linux/arm64
+          push: false
+          load: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            GIT_TOKEN=${{ steps.generate-token.outputs.token }}
+          file: ./EMQX-Business-Critical/build/docker_build/Dockerfile
+      - name: Push to GHCR
+        if: github.ref_type == 'tag'
+        run: |
+          echo ${{ secrets.GH_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          docker push ${{ steps.meta.outputs.tags }}
+ 
+
