@@ -105,6 +105,8 @@ jobs:
         if: always()
         run: |
           docker logout ghcr.io
+          docker system prune -f > /dev/null
           # 清理可能存在的其他注册表登录信息
           rm -f ${HOME}/.docker/config.json
+          rm -rf ./EMQX-Business-Critical
 
