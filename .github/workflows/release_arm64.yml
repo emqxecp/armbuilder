@@ -65,11 +65,11 @@ jobs:
 
           if [[ ${{ github.ref_type }} == "tag" ]]; then
             echo 'registry<<EOF' >> $GITHUB_OUTPUT
-            echo "ghcr.io/emqx/ecp-main" >> $GITHUB_OUTPUT
+            echo "ghcr.io/emqxecp/ecp-main" >> $GITHUB_OUTPUT
             # echo "docker.io/emqx/ecp-main" >> $GITHUB_OUTPUT
             echo 'EOF' >> $GITHUB_OUTPUT
           else
-            echo 'registry="ghcr.io/emqx/ecp-main"' >> $GITHUB_OUTPUT
+            echo 'registry="ghcr.io/emqxecp/ecp-main"' >> $GITHUB_OUTPUT
           fi
       - uses: docker/metadata-action@v5
         id: meta
@@ -94,7 +94,7 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            GIT_TOKEN=${{ steps.generate-token.outputs.token }}
+            GIT_TOKEN=${{ secrets.GH_TOKEN }}
           file: ./EMQX-Business-Critical/build/docker_build/Dockerfile
       - name: Push to GHCR
         if: github.ref_type == 'tag'
