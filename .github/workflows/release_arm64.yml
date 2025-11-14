@@ -85,20 +85,26 @@ jobs:
       #   with:
       #     username: ${{ secrets.DOCKER_HUB_USER }}
       #     password: ${{ secrets.DOCKER_HUB_TOKEN }}
-      - uses: docker/build-push-action@v5
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GH_TOKEN }}
+      - name: Build and Push to GHCR
+        uses: docker/build-push-action@v5
         with:
           context: ./EMQX-Business-Critical/
           platforms: linux/arm64
-          push: false
-          load: true
+          push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             GIT_TOKEN=${{ secrets.GH_TOKEN }}
           file: ./EMQX-Business-Critical/build/docker_build/Dockerfile
-      - name: Push to GHCR
+      - name: Docker Logout
+        if: always()
         run: |
-          echo ${{ secrets.GH_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-          docker push ${{ steps.meta.outputs.tags }}
- 
+          docker logout ghcr.io
+          # 清理可能存在的其他注册表登录信息
+          rm -f ${HOME}/.docker/config.json
 
