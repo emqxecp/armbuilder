@@ -31,7 +31,7 @@ jobs:
       #       emqx-bc-emqxee-agent
       - name: Private repo access
         run: |
-          git config --global url."https://x-access-token:${{ steps.generate-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
+          git config --global url."https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/".insteadOf "https://github.com/"
           echo "GOPRIVATE=github.com/emqx/*" >> $GITHUB_ENV
           echo "GONOPROXY=github.com/emqx/*" >> $GITHUB_ENV
           echo "GONOSUMDB=github.com/emqx/*" >> $GITHUB_ENV
@@ -88,7 +88,7 @@ jobs:
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
-          username: ${{ github.actor }}
+          username: shixiangw
           password: ${{ secrets.GH_TOKEN }}
       - name: Build and Push to GHCR
         uses: docker/build-push-action@v5
